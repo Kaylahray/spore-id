@@ -16,17 +16,6 @@ export function IdGallery() {
   if (!signer) {
     return (
       <div className="flex flex-col">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="font-display text-3xl uppercase">My ID Cards</h2>
-          <button
-            type="button"
-            onClick={() => void Promise.resolve(connect())}
-            className="bg-ink text-acid border-[3px] border-ink px-3 py-2 font-mono text-[10px] uppercase tracking-widest font-bold flex items-center gap-2"
-          >
-            <Wallet2 className="w-4 h-4" />
-            Connect wallet
-          </button>
-        </div>
         <EmptyState mode="no-wallet" />
       </div>
     );

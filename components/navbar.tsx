@@ -9,7 +9,6 @@ import { useWallet } from "@/hooks/use-wallet";
 const navLinks = [
   { label: "Mint", href: "/" },
   { label: "Gallery", href: "/gallery" },
-  { label: "Manifesto", href: "/manifesto" },
 ];
 
 export function TopNav() {
