@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { X, Plus, Save, Database } from "lucide-react";
+import { X, Plus, Save, Database, Loader2 } from "lucide-react";
 import { PROFILE_RULES } from "@/lib/registry/config";
 import { profileSizeBreakdown } from "@/lib/registry/capacity";
 import type { Profile } from "@/lib/registry/types";
@@ -207,7 +207,11 @@ export function ProfileForm({
         disabled={!canSave}
         className="w-full bg-ink text-paper border-[5px] border-ink py-4 font-display text-xl uppercase tracking-tight shadow-brutal-lg flex items-center justify-center gap-3 disabled:opacity-60"
       >
-        <Save className="w-5 h-5" />
+        {busy ? (
+          <Loader2 className="w-5 h-5 animate-spin" />
+        ) : (
+          <Save className="w-5 h-5" />
+        )}
         {busy ? "Saving..." : submitLabel}
       </motion.button>
     </form>

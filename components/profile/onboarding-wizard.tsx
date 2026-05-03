@@ -10,6 +10,7 @@ import {
   Check,
   ArrowRight,
   ArrowLeft,
+  Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useWallet } from "@/hooks/use-wallet";
@@ -153,6 +154,7 @@ export function OnboardingWizard() {
                 disabled={!usernameValid || isClaiming}
                 className="flex-1 bg-shock text-paper border-[5px] border-ink py-3 font-display text-lg uppercase tracking-tight shadow-brutal flex items-center justify-center gap-2 disabled:opacity-60"
               >
+                {isClaiming ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
                 {isClaiming ? "Claiming..." : "Claim & Continue"}
                 <ArrowRight className="w-4 h-4" />
               </motion.button>
@@ -175,6 +177,12 @@ export function OnboardingWizard() {
               busy={isSaving}
               onSubmit={finishProfile}
             />
+            {isSaving ? (
+              <div className="mt-3 inline-flex items-center gap-2 border-[3px] border-ink bg-acid px-2 py-1 font-mono text-[10px] uppercase tracking-widest font-bold">
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                Writing profile cell on-chain...
+              </div>
+            ) : null}
             <NavButton onClick={() => setStep("username")} direction="back">
               Back
             </NavButton>

@@ -4,7 +4,16 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Edit3, Trash2, Sparkles, ArrowRight, Eye } from "lucide-react";
+import {
+  Edit3,
+  Trash2,
+  Sparkles,
+  ArrowRight,
+  Eye,
+  Loader2,
+  AlertTriangle,
+  X,
+} from "lucide-react";
 import { toast } from "sonner";
 import {
   useProfileContext,
@@ -20,10 +29,15 @@ import type { Profile } from "@/lib/registry/types";
 export default function MePage() {
   const router = useRouter();
   const { isConnected, connect } = useWallet();
-  const { username, release } = useUsernameContext();
+  const { username, release, isClaiming } = useUsernameContext();
   const { profile, save, burn, isSaving } = useProfileContext();
   const { mintedSpores } = useSporeContext();
   const [editing, setEditing] = useState(false);
+  const [modal, setModal] = useState<"burn" | "release" | null>(null);
+  const [pendingAction, setPendingAction] = useState<null | "burn" | "release">(
+    null,
+  );
+  const [statusNote, setStatusNote] = useState<string | null>(null);
 
   if (!isConnected) {
     return (
@@ -124,47 +138,45 @@ export default function MePage() {
   };
 
   const handleBurn = async () => {
-    if (
-      !confirm(
-        "Burn your profile cell? Your username stays. You can create a new profile later.",
-      )
-    ) {
-      return;
-    }
+    setPendingAction("burn");
+    setStatusNote("Preparing burn transaction...");
     try {
       await burn();
       toast.success("Profile burned");
+      setStatusNote("Profile burned. You can create a new one anytime.");
     } catch (err) {
+      setStatusNote(null);
       toast.error("Could not burn", {
         description: err instanceof Error ? err.message : "Unknown error",
       });
+    } finally {
+      setPendingAction(null);
     }
   };
 
   const handleReleaseUsername = async () => {
-    if (
-      !confirm(
-        `Release @${myUsername.username}?\n\n` +
-          `• Your public /u/${myUsername.username} page will disappear until you claim a handle again.\n` +
-          `• The share link stays hidden from this page until then.\n` +
-          `• Your profile cell stays on your wallet — after you reclaim, onboarding will open your existing data and you can tap Update profile.\n` +
-          `• The handle becomes available for anyone else to claim.`,
-      )
-    ) {
-      return;
-    }
+    setPendingAction("release");
+    setStatusNote(`Releasing @${myUsername.username} on-chain...`);
     try {
       await release();
+      setStatusNote("Handle released. Redirecting to onboarding...");
       toast.success("Username released", {
         description: "Public page hidden. Reclaim a handle on onboarding to go live again.",
       });
-      router.push("/onboard");
+      setTimeout(() => router.push("/onboard"), 800);
     } catch (err) {
+      setStatusNote(null);
       toast.error("Could not release", {
         description: err instanceof Error ? err.message : "Unknown error",
       });
+    } finally {
+      setPendingAction(null);
     }
   };
+
+  const isBusy = isSaving || isClaiming || pendingAction !== null;
+  const isBurning = pendingAction === "burn";
+  const isReleasing = pendingAction === "release";
 
   return (
     <Shell>
@@ -176,6 +188,12 @@ export default function MePage() {
           Edit, burn, or share your decentralized identity.
         </p>
       </div>
+      {statusNote ? (
+        <div className="mb-4 border-[3px] border-ink bg-acid px-3 py-2 font-mono text-[10px] uppercase tracking-widest font-bold inline-flex items-center gap-2">
+          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+          {statusNote}
+        </div>
+      ) : null}
 
       <div className="mb-4">
         <ProfileLink username={myUsername.username} />
@@ -187,6 +205,7 @@ export default function MePage() {
           whileTap={{ x: 2, y: 2 }}
           type="button"
           onClick={() => setEditing((v) => !v)}
+          disabled={isBusy}
           className="bg-paper text-ink border-[3px] border-ink py-3 px-4 font-mono text-xs uppercase tracking-widest font-bold flex items-center justify-center gap-2 shadow-brutal"
         >
           {editing ? (
@@ -232,25 +251,69 @@ export default function MePage() {
         <h3 className="font-mono text-xs uppercase tracking-widest font-bold mb-3 text-shock">
           Danger Zone
         </h3>
+        {(isBurning || isReleasing) && (
+          <div className="mb-3 inline-flex items-center gap-2 border-[3px] border-ink bg-acid px-2 py-1 font-mono text-[10px] uppercase tracking-widest font-bold">
+            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            {isBurning
+              ? "Burning profile cell on-chain..."
+              : `Releasing @${myUsername.username} on-chain...`}
+          </div>
+        )}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <button
-            onClick={handleBurn}
+            onClick={() => setModal("burn")}
             type="button"
-            className="bg-paper text-ink border-[3px] border-ink py-2 px-3 font-mono text-[10px] uppercase tracking-widest font-bold inline-flex items-center justify-center gap-2 hover:bg-shock hover:text-paper transition-colors"
+            disabled={isBusy}
+            className="bg-paper text-ink border-[3px] border-ink py-2 px-3 font-mono text-[10px] uppercase tracking-widest font-bold inline-flex items-center justify-center gap-2 hover:bg-shock hover:text-paper transition-colors disabled:opacity-60"
           >
-            <Trash2 className="w-3.5 h-3.5" />
-            Burn profile cell
+            {isBurning ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Trash2 className="w-3.5 h-3.5" />
+            )}
+            {isBurning ? "Burning profile..." : "Burn profile cell"}
           </button>
           <button
-            onClick={handleReleaseUsername}
+            onClick={() => setModal("release")}
             type="button"
-            className="bg-paper text-ink border-[3px] border-ink py-2 px-3 font-mono text-[10px] uppercase tracking-widest font-bold inline-flex items-center justify-center gap-2 hover:bg-shock hover:text-paper transition-colors"
+            disabled={isBusy}
+            className="bg-paper text-ink border-[3px] border-ink py-2 px-3 font-mono text-[10px] uppercase tracking-widest font-bold inline-flex items-center justify-center gap-2 hover:bg-shock hover:text-paper transition-colors disabled:opacity-60"
           >
-            <Trash2 className="w-3.5 h-3.5" />
-            Release @{myUsername.username}
+            {isReleasing ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Trash2 className="w-3.5 h-3.5" />
+            )}
+            {isReleasing
+              ? `Releasing @${myUsername.username}...`
+              : `Release @${myUsername.username}`}
           </button>
         </div>
       </div>
+      <ConfirmModal
+        open={modal === "burn"}
+        title="Burn profile cell?"
+        body="This removes your current profile cell from chain. Your username stays and you can create a new profile later."
+        confirmText={pendingAction === "burn" ? "Burning..." : "Burn profile"}
+        busy={pendingAction === "burn"}
+        onClose={() => setModal(null)}
+        onConfirm={async () => {
+          setModal(null);
+          await handleBurn();
+        }}
+      />
+      <ConfirmModal
+        open={modal === "release"}
+        title={`Release @${myUsername.username}?`}
+        body={`Your /u/${myUsername.username} page will be hidden, and the handle becomes claimable by others. Your profile cell stays in your wallet and can be linked again after onboarding.`}
+        confirmText={pendingAction === "release" ? "Releasing..." : "Release handle"}
+        busy={pendingAction === "release"}
+        onClose={() => setModal(null)}
+        onConfirm={async () => {
+          setModal(null);
+          await handleReleaseUsername();
+        }}
+      />
     </Shell>
   );
 }
@@ -281,6 +344,70 @@ function EmptyHero({
         {body}
       </p>
       <div className="inline-block">{action}</div>
+    </div>
+  );
+}
+
+function ConfirmModal({
+  open,
+  title,
+  body,
+  confirmText,
+  busy,
+  onClose,
+  onConfirm,
+}: {
+  open: boolean;
+  title: string;
+  body: string;
+  confirmText: string;
+  busy: boolean;
+  onClose: () => void;
+  onConfirm: () => Promise<void>;
+}) {
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 bg-ink/60 flex items-center justify-center p-4">
+      <div className="w-full max-w-xl bg-paper border-[5px] border-ink shadow-brutal-xl p-6 relative">
+        <button
+          type="button"
+          onClick={onClose}
+          disabled={busy}
+          className="absolute top-3 right-3 border-[3px] border-ink p-1 bg-paper"
+        >
+          <X className="w-4 h-4" />
+        </button>
+        <div className="inline-flex items-center gap-2 border-[3px] border-ink bg-acid px-2 py-1 font-mono text-[10px] uppercase tracking-widest font-bold mb-3">
+          <AlertTriangle className="w-3.5 h-3.5" />
+          Confirm action
+        </div>
+        <h4 className="font-display text-3xl uppercase leading-[0.9] tracking-tight mb-2">
+          {title}
+        </h4>
+        <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground leading-relaxed mb-5">
+          {body}
+        </p>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={busy}
+            className="flex-1 bg-paper border-[3px] border-ink py-2.5 font-mono text-[10px] uppercase tracking-widest font-bold disabled:opacity-60"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={() => void onConfirm()}
+            disabled={busy}
+            className="flex-1 bg-shock text-paper border-[3px] border-ink py-2.5 font-mono text-[10px] uppercase tracking-widest font-bold inline-flex items-center justify-center gap-2 disabled:opacity-60"
+          >
+            {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+            {confirmText}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
