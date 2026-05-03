@@ -1,17 +1,29 @@
 "use client";
 
-import { Wallet2, RefreshCw } from "lucide-react";
+import { useState } from "react";
+import { Wallet2, RefreshCw, AlertTriangle, Loader2, X } from "lucide-react";
 import { SporeCard } from "./spore-card";
 import { CellVisualization } from "./cell-visualization";
 import { EmptyState } from "./empty-state";
 import { useSporeContext } from "@/context/app-provider";
+import { useProfileContext } from "@/context/app-provider";
 import { useWallet } from "@/hooks/use-wallet";
+import type { MintedSpore } from "@/hooks/use-spore";
 
 const ACCENTS = ["shock", "cobalt", "acid", "lime"] as const;
 
 export function IdGallery() {
   const { signer, connect } = useWallet();
-  const { mintedSpores, isLoadingSpores, loadMintedSpores } = useSporeContext();
+  const {
+    mintedSpores,
+    isLoadingSpores,
+    loadMintedSpores,
+    deleteImage,
+    deletingSporeId,
+  } = useSporeContext();
+  const { profile } = useProfileContext();
+  const [targetDelete, setTargetDelete] = useState<MintedSpore | null>(null);
+  const selectedAvatarId = profile?.avatarSporeId ?? null;
 
   if (!signer) {
     return (
@@ -64,6 +76,14 @@ export function IdGallery() {
         capacity={main.ckbCapacity}
         accent={ACCENTS[0]}
         isMain
+        onDelete={() => setTargetDelete(main)}
+        isDeleting={deletingSporeId === main.id}
+        deleteDisabled={selectedAvatarId === main.id}
+        deleteDisabledReason={
+          selectedAvatarId === main.id
+            ? "This image is currently selected as your profile avatar."
+            : undefined
+        }
       />
 
       <CellVisualization />
@@ -82,8 +102,88 @@ export function IdGallery() {
             avatar={spore.imageUrl}
             capacity={spore.ckbCapacity}
             accent={ACCENTS[(index + 1) % ACCENTS.length]}
+            onDelete={() => setTargetDelete(spore)}
+            isDeleting={deletingSporeId === spore.id}
+            deleteDisabled={selectedAvatarId === spore.id}
+            deleteDisabledReason={
+              selectedAvatarId === spore.id
+                ? "This image is currently selected as your profile avatar."
+                : undefined
+            }
           />
         ))}
+      </div>
+      <DeleteImageModal
+        open={targetDelete != null}
+        target={targetDelete}
+        busy={targetDelete ? deletingSporeId === targetDelete.id : false}
+        onClose={() => setTargetDelete(null)}
+        onConfirm={async () => {
+          if (!targetDelete) return;
+          await deleteImage(targetDelete.id);
+          setTargetDelete(null);
+        }}
+      />
+    </div>
+  );
+}
+
+function DeleteImageModal({
+  open,
+  target,
+  busy,
+  onClose,
+  onConfirm,
+}: {
+  open: boolean;
+  target: MintedSpore | null;
+  busy: boolean;
+  onClose: () => void;
+  onConfirm: () => Promise<void>;
+}) {
+  if (!open || !target) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 bg-ink/60 flex items-center justify-center p-4">
+      <div className="w-full max-w-xl bg-paper border-[5px] border-ink shadow-brutal-xl p-6 relative">
+        <button
+          type="button"
+          onClick={onClose}
+          disabled={busy}
+          className="absolute top-3 right-3 border-[3px] border-ink p-1 bg-paper"
+        >
+          <X className="w-4 h-4" />
+        </button>
+        <div className="inline-flex items-center gap-2 border-[3px] border-ink bg-acid px-2 py-1 font-mono text-[10px] uppercase tracking-widest font-bold mb-3">
+          <AlertTriangle className="w-3.5 h-3.5" />
+          Confirm delete
+        </div>
+        <h4 className="font-display text-3xl uppercase leading-[0.9] tracking-tight mb-2">
+          Delete image?
+        </h4>
+        <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground leading-relaxed mb-5">
+          This melts the spore on-chain and unlocks its CKB capacity back to
+          your wallet.
+        </p>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={busy}
+            className="flex-1 bg-paper border-[3px] border-ink py-2.5 font-mono text-[10px] uppercase tracking-widest font-bold disabled:opacity-60"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={() => void onConfirm()}
+            disabled={busy}
+            className="flex-1 bg-shock text-paper border-[3px] border-ink py-2.5 font-mono text-[10px] uppercase tracking-widest font-bold inline-flex items-center justify-center gap-2 disabled:opacity-60"
+          >
+            {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+            {busy ? "Deleting image..." : "Delete image"}
+          </button>
+        </div>
       </div>
     </div>
   );

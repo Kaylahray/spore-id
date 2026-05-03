@@ -17,6 +17,7 @@ import { useWallet } from "@/hooks/use-wallet";
 import {
   useUsernameContext,
   useProfileContext,
+  useSporeContext,
 } from "@/context/app-provider";
 import { UsernameInput } from "./username-input";
 import { ProfileForm } from "./profile-form";
@@ -39,6 +40,7 @@ export function OnboardingWizard() {
     isClaiming,
   } = useUsernameContext();
   const { profile, create, save, isSaving } = useProfileContext();
+  const { mintedSpores } = useSporeContext();
 
   const initialStep: StepId = !isConnected
     ? "wallet"
@@ -175,6 +177,7 @@ export function OnboardingWizard() {
               initial={profile ?? undefined}
               submitLabel={profile ? "Update profile" : "Create profile"}
               busy={isSaving}
+              spores={mintedSpores}
               onSubmit={finishProfile}
             />
             {isSaving ? (

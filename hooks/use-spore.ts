@@ -65,6 +65,7 @@ export function useSpore() {
   }>({ type: "idle", message: "" });
   const [mintedImageUrl, setMintedImageUrl] = useState<string | null>(null);
   const [mintedSpores, setMintedSpores] = useState<MintedSpore[]>([]);
+  const [deletingSporeId, setDeletingSporeId] = useState<string | null>(null);
   const mintedImageUrlRef = useRef<string | null>(null);
   const mintedSporesRef = useRef<MintedSpore[]>([]);
 
@@ -307,6 +308,43 @@ export function useSpore() {
     setStatus({ type: "idle", message: "" });
   };
 
+  const deleteImage = async (sporeId: string) => {
+    if (!signer) {
+      setStatus({
+        type: "error",
+        message: "Please connect your wallet first.",
+      });
+      return;
+    }
+
+    setDeletingSporeId(sporeId);
+    setStatus({ type: "idle", message: "Preparing delete transaction..." });
+    try {
+      const { tx } = await ccc.spore.meltSpore({ signer, id: sporeId });
+      await tx.completeFeeBy(signer, 2000);
+      setStatus({ type: "idle", message: "Waiting for wallet approval..." });
+      const txHash = await signer.sendTransaction(tx);
+      setStatus({
+        type: "idle",
+        message: "Delete sent. Waiting for confirmation...",
+      });
+      await signer.client.waitTransaction(txHash);
+      setStatus({
+        type: "success",
+        message: `Image deleted: ${sporeId.slice(0, 10)}...`,
+      });
+      await loadMintedSpores();
+    } catch (err) {
+      console.error(err);
+      setStatus({
+        type: "error",
+        message: err instanceof Error ? err.message : "Failed to delete image.",
+      });
+    } finally {
+      setDeletingSporeId(null);
+    }
+  };
+
   return {
     mintSpore,
     loadMintedSpores,
@@ -315,6 +353,8 @@ export function useSpore() {
     status,
     mintedImageUrl,
     mintedSpores,
+    deletingSporeId,
     resetSpore,
+    deleteImage,
   };
 }

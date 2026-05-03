@@ -7,6 +7,8 @@ import {
   Download,
   FileImage,
   FileText,
+  Trash2,
+  Loader2,
 } from "lucide-react";
 import { useRef, useState } from "react";
 import { toPng } from "html-to-image";
@@ -22,6 +24,10 @@ interface SporeCardProps {
   capacity: string;
   accent: "acid" | "shock" | "cobalt" | "lime";
   isMain?: boolean;
+  onDelete?: (id: string) => void;
+  isDeleting?: boolean;
+  deleteDisabled?: boolean;
+  deleteDisabledReason?: string;
 }
 
 const ACCENT_BG: Record<SporeCardProps["accent"], string> = {
@@ -47,6 +53,10 @@ export function SporeCard({
   capacity,
   accent,
   isMain,
+  onDelete,
+  isDeleting,
+  deleteDisabled,
+  deleteDisabledReason,
 }: SporeCardProps) {
   const cardRef = useRef<HTMLDivElement>(null);
   const [busy, setBusy] = useState<"png" | "pdf" | null>(null);
@@ -199,6 +209,26 @@ export function SporeCard({
             {capacity} CKB
           </span>
         </div>
+        {onDelete ? (
+          <button
+            type="button"
+            onClick={() => onDelete(id)}
+            disabled={Boolean(isDeleting) || Boolean(deleteDisabled)}
+            title={deleteDisabledReason}
+            className="mt-3 w-full bg-paper text-ink border-[3px] border-ink py-2 px-3 font-mono text-[10px] uppercase tracking-widest font-bold inline-flex items-center justify-center gap-2 hover:bg-shock hover:text-paper transition-colors disabled:opacity-60"
+          >
+            {isDeleting ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Trash2 className="w-3.5 h-3.5" />
+            )}
+            {isDeleting
+              ? "Deleting image..."
+              : deleteDisabled
+                ? "Selected avatar"
+                : "Delete image"}
+          </button>
+        ) : null}
       </div>
     </motion.div>
   );

@@ -225,9 +225,13 @@ export default function MePage() {
           className="bg-acid text-ink border-[3px] border-ink py-3 px-4 font-mono text-xs uppercase tracking-widest font-bold flex items-center justify-center gap-2 shadow-brutal"
         >
           <Sparkles className="w-4 h-4" />
-          Mint a Spore
+          Mint profile picture
         </Link>
       </div>
+      <p className="mb-6 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+        After minting, edit profile, pick the avatar spore, then save to publish
+        it on your shareable page.
+      </p>
 
       {editing ? (
         <div className="bg-paper border-[5px] border-ink shadow-brutal-xl p-6 md:p-8">
@@ -236,6 +240,7 @@ export default function MePage() {
             initial={myProfile}
             submitLabel="Save Changes"
             busy={isSaving}
+            spores={mintedSpores}
             onSubmit={handleSave}
           />
         </div>

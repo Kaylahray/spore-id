@@ -14,8 +14,15 @@ interface PageProps {
 
 export default function PublicProfilePage({ params }: PageProps) {
   const { username } = use(params);
-  const { profile, isLoading } = usePublicProfile(username);
+  const { profile, avatarSpore, isLoading } = usePublicProfile(username);
   const { mintedSpores } = useSporeContext();
+  const sporesForPublicProfile =
+    avatarSpore != null
+      ? [
+          avatarSpore,
+          ...mintedSpores.filter((s) => s.id !== avatarSpore.id),
+        ]
+      : mintedSpores;
 
   return (
     <div className="min-h-screen bg-paper text-ink">
@@ -42,12 +49,7 @@ export default function PublicProfilePage({ params }: PageProps) {
             <PublicProfile
               username={username}
               profile={profile}
-              spores={
-                mintedSpores.length > 0 &&
-                mintedSpores.some((s) => s.id === profile.avatarSporeId)
-                  ? mintedSpores
-                  : []
-              }
+              spores={sporesForPublicProfile}
             />
           </div>
         ) : (

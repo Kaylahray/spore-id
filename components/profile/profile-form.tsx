@@ -2,15 +2,17 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { X, Plus, Save, Database, Loader2 } from "lucide-react";
+import { X, Plus, Save, Database, Loader2, Sparkles } from "lucide-react";
 import { PROFILE_RULES } from "@/lib/registry/config";
 import { profileSizeBreakdown } from "@/lib/registry/capacity";
 import type { Profile } from "@/lib/registry/types";
+import type { MintedSpore } from "@/hooks/use-spore";
 
 interface ProfileFormProps {
   initial?: Profile;
   submitLabel?: string;
   busy?: boolean;
+  spores?: MintedSpore[];
   onSubmit: (data: Profile) => void | Promise<void>;
 }
 
@@ -18,6 +20,7 @@ export function ProfileForm({
   initial,
   submitLabel = "Save Profile",
   busy,
+  spores = [],
   onSubmit,
 }: ProfileFormProps) {
   const [name, setName] = useState(initial?.name ?? "");
@@ -28,6 +31,7 @@ export function ProfileForm({
   const [github, setGithub] = useState(initial?.links?.github ?? "");
   const [x, setX] = useState(initial?.links?.x ?? "");
   const [website, setWebsite] = useState(initial?.links?.website ?? "");
+  const [avatarSporeId, setAvatarSporeId] = useState(initial?.avatarSporeId ?? "");
 
   useEffect(() => {
     if (!initial) return;
@@ -38,6 +42,7 @@ export function ProfileForm({
     setGithub(initial.links?.github ?? "");
     setX(initial.links?.x ?? "");
     setWebsite(initial.links?.website ?? "");
+    setAvatarSporeId(initial.avatarSporeId ?? "");
   }, [initial]);
 
   const addSkill = () => {
@@ -65,6 +70,7 @@ export function ProfileForm({
         x: x.trim() || undefined,
         website: website.trim() || undefined,
       },
+      avatarSporeId: avatarSporeId || undefined,
     });
   };
 
@@ -81,8 +87,9 @@ export function ProfileForm({
         x: x.trim() || undefined,
         website: website.trim() || undefined,
       },
+      avatarSporeId: avatarSporeId || undefined,
     }),
-    [name, headline, bio, skills, github, x, website],
+    [name, headline, bio, skills, github, x, website, avatarSporeId],
   );
 
   const sizeBreakdown = useMemo(
@@ -197,6 +204,61 @@ export function ProfileForm({
           />
         </Field>
       </div>
+      <Field label="Avatar Spore">
+        <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-2">
+          After minting, pick a spore here, then save/update profile to publish
+          it on your public page.
+        </p>
+        {spores.length === 0 ? (
+          <div className="border-[3px] border-dashed border-ink px-3 py-3 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+            No minted spores found yet. Mint one, then come back to set avatar.
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+              {spores.map((spore) => {
+                const selected = avatarSporeId === spore.id;
+                return (
+                  <button
+                    key={spore.id}
+                    type="button"
+                    onClick={() => setAvatarSporeId(spore.id)}
+                    className={`relative aspect-square overflow-hidden border-[3px] ${selected ? "border-shock" : "border-ink"} transition-colors`}
+                    title={spore.name || "Spore avatar"}
+                  >
+                    <img
+                      src={spore.imageUrl}
+                      alt={spore.name || "Spore avatar"}
+                      className="w-full h-full object-cover"
+                    />
+                    {selected ? (
+                      <span className="absolute top-1 left-1 bg-shock text-paper border-2 border-ink px-1 py-0.5 font-mono text-[9px] uppercase tracking-widest font-bold">
+                        Active
+                      </span>
+                    ) : null}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="mt-2 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setAvatarSporeId("")}
+                disabled={!avatarSporeId}
+                className="bg-paper border-[3px] border-ink px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest font-bold disabled:opacity-50"
+              >
+                Clear avatar
+              </button>
+              {avatarSporeId ? (
+                <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground inline-flex items-center gap-1">
+                  <Sparkles className="w-3 h-3" />
+                  Avatar selected
+                </span>
+              ) : null}
+            </div>
+          </>
+        )}
+      </Field>
 
       <CellSizeMeter breakdown={sizeBreakdown} />
 

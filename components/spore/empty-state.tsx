@@ -1,36 +1,30 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ArrowLeft, Sparkles, Wallet, ImagePlus, Coins } from "lucide-react";
+import { ArrowLeft, Sparkles, Wallet, ImagePlus, CheckCircle2 } from "lucide-react";
 
 interface EmptyStateProps {
   mode?: "no-wallet" | "loading" | "no-spores";
 }
 
-const STEPS = [
+const NO_SPORES_STEPS = [
   {
-    icon: Wallet,
-    title: "Connect wallet",
-    body: "Link your CKB wallet. We never custody keys - your bytes, your rules.",
+    icon: ImagePlus,
+    title: "Upload profile image",
+    body: "Upload and auto-compress an image, then mint it as an on-chain profile picture spore.",
     accent: "bg-acid text-ink",
   },
   {
-    icon: ImagePlus,
-    title: "Upload your face",
-    body: "Drop an image. It gets serialized and lives on-chain forever. No IPFS pinning roulette.",
+    icon: Sparkles,
+    title: "Pick avatar in /me",
+    body: "Go to My Builder Page, edit profile, and select the minted image as your avatar.",
     accent: "bg-shock text-paper",
   },
   {
-    icon: Coins,
-    title: "Lock CKB capacity",
-    body: "1 CKB = 1 byte. Pay the storage rent once. Your identity stays put.",
+    icon: CheckCircle2,
+    title: "Save profile",
+    body: "Save/update profile to publish the new avatar on your shareable /u/username page.",
     accent: "bg-cobalt text-paper",
-  },
-  {
-    icon: Sparkles,
-    title: "Mint the spore",
-    body: "Sign the transaction. Your raw on-chain ID is born. Export, share, flex.",
-    accent: "bg-lime text-ink",
   },
 ];
 
@@ -49,10 +43,10 @@ export function EmptyState({ mode = "no-spores" }: EmptyStateProps) {
       ? "SYNCING_CHAIN"
       : "NEW_WALLET";
   const body = isNoWallet
-    ? "Connect your wallet to view and manage on-chain SporeID cards."
+    ? "Connect your wallet to view and manage minted profile pictures."
     : isLoading
-      ? "Scanning your wallet for image spores on Nervos CKB."
-      : "Your gallery is a blank cell. Mint your first SporeID to claim a permanent slot on the Nervos CKB chain.";
+      ? "Scanning your wallet for minted profile-picture spores on Nervos CKB."
+      : "No minted profile pictures yet. Mint your first one, then set it as avatar from your /me profile editor.";
 
   return (
     <motion.div
@@ -62,7 +56,7 @@ export function EmptyState({ mode = "no-spores" }: EmptyStateProps) {
       className="flex flex-col"
     >
       <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-        <h2 className="font-display text-3xl uppercase">My ID Cards</h2>
+        <h2 className="font-display text-3xl uppercase">My Profile Pictures</h2>
         <div className="bg-paper text-ink border-[3px] border-ink px-3 py-1 font-mono text-xs uppercase tracking-widest font-bold">
           00 minted
         </div>
@@ -103,7 +97,7 @@ export function EmptyState({ mode = "no-spores" }: EmptyStateProps) {
 
           <div className="hidden md:flex items-center justify-center gap-2 font-mono text-[11px] uppercase tracking-widest font-bold text-ink">
             <ArrowLeft className="w-4 h-4 animate-pulse" strokeWidth={3} />
-            Start at the Minting Station
+            Start at mint profile picture
           </div>
         </div>
       </div>
@@ -117,7 +111,7 @@ export function EmptyState({ mode = "no-spores" }: EmptyStateProps) {
         </div>
 
         <ol className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {STEPS.map((step, i) => {
+          {(isNoWallet ? [] : NO_SPORES_STEPS).map((step, i) => {
             const Icon = step.icon;
             return (
               <li
@@ -152,7 +146,7 @@ export function EmptyState({ mode = "no-spores" }: EmptyStateProps) {
             ? "Connect wallet from top nav"
             : isLoading
               ? "Fetching latest spores"
-              : "Mint your first spore from the station"}
+              : "Mint first image, then set avatar in /me"}
         </div>
       </div>
     </motion.div>
