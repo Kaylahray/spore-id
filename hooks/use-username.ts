@@ -9,6 +9,7 @@ import {
   releaseUsername,
 } from "@/lib/registry/username";
 import type { Username, UsernameAvailability } from "@/lib/registry/types";
+import { requestWalletRefresh } from "@/lib/wallet-refresh";
 
 export function useUsername() {
   const signer = useSigner();
@@ -46,6 +47,7 @@ export function useUsername() {
       try {
         const next = await claimUsername(signer, raw);
         setUsername(next);
+        requestWalletRefresh();
         return next;
       } finally {
         setIsClaiming(false);
@@ -60,6 +62,7 @@ export function useUsername() {
     try {
       await releaseUsername(signer);
       setUsername(null);
+      requestWalletRefresh();
     } finally {
       setIsClaiming(false);
     }

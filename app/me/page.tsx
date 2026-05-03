@@ -373,8 +373,8 @@ function ConfirmModal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-ink/60 flex items-center justify-center p-4">
-      <div className="w-full max-w-xl bg-paper border-[5px] border-ink shadow-brutal-xl p-6 relative">
+    <div className="fixed inset-0 z-50 bg-ink/60 flex items-center justify-center p-3 sm:p-4">
+      <div className="w-full max-w-xl max-h-[90vh] overflow-y-auto bg-paper border-[5px] border-ink shadow-brutal-xl p-4 sm:p-6 relative">
         <button
           type="button"
           onClick={onClose}

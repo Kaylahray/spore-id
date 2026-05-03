@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { ccc } from "@ckb-ccc/connector-react";
+import { WALLET_REFRESH_EVENT } from "@/lib/wallet-refresh";
 
 export function useWallet() {
   const { open, disconnect, wallet } = ccc.useCcc();
@@ -10,26 +11,46 @@ export function useWallet() {
   const [address, setAddress] = useState("");
   const [balance, setBalance] = useState("");
 
+  const refreshWallet = async () => {
+    if (!signer) {
+      setAddress("");
+      setBalance("");
+      return;
+    }
+    try {
+      const addr = await signer.getRecommendedAddress();
+      setAddress(addr);
+
+      const capacity = await signer.getBalance();
+      setBalance(ccc.fixedPointToString(capacity));
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message.toLowerCase() : String(error);
+      if (message.includes("connection closed")) {
+        return;
+      }
+      console.error("Failed to fetch wallet data:", error);
+    }
+  };
+
   useEffect(() => {
     if (!signer) {
       setAddress("");
       setBalance("");
       return;
     }
+    void refreshWallet();
+  }, [signer]);
 
-    const fetchWalletData = async () => {
-      try {
-        const addr = await signer.getRecommendedAddress();
-        setAddress(addr);
-
-        const capacity = await signer.getBalance();
-        setBalance(ccc.fixedPointToString(capacity));
-      } catch (error) {
-        console.error("Failed to fetch wallet data:", error);
-      }
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handler = () => {
+      void refreshWallet();
     };
-
-    void fetchWalletData();
+    window.addEventListener(WALLET_REFRESH_EVENT, handler);
+    return () => {
+      window.removeEventListener(WALLET_REFRESH_EVENT, handler);
+    };
   }, [signer]);
 
   const formattedAddress = useMemo(() => {
@@ -49,5 +70,6 @@ export function useWallet() {
     balance,
     formattedAddress,
     isConnected: !!wallet,
+    refreshWallet,
   };
 }

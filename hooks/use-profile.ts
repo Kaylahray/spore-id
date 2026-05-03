@@ -9,6 +9,7 @@ import {
   updateProfile,
 } from "@/lib/registry/profile";
 import type { Profile, StoredProfile } from "@/lib/registry/types";
+import { requestWalletRefresh } from "@/lib/wallet-refresh";
 
 export function useProfile() {
   const signer = useSigner();
@@ -46,6 +47,7 @@ export function useProfile() {
       try {
         const next = await createProfile(signer, data, username);
         setProfile(next);
+        requestWalletRefresh();
         return next;
       } finally {
         setIsSaving(false);
@@ -63,6 +65,7 @@ export function useProfile() {
       try {
         const next = await updateProfile(signer, data, username);
         setProfile(next);
+        requestWalletRefresh();
         return next;
       } finally {
         setIsSaving(false);
@@ -77,6 +80,7 @@ export function useProfile() {
     try {
       await burnProfile(signer);
       setProfile(null);
+      requestWalletRefresh();
     } finally {
       setIsSaving(false);
     }

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useSigner, ccc } from "@ckb-ccc/connector-react";
+import { requestWalletRefresh } from "@/lib/wallet-refresh";
 
 export type MintedSpore = {
   id: string;
@@ -128,6 +129,8 @@ export function useSpore() {
         type: "success",
         message: `Spore minted! ID: ${sporeId.slice(0, 10)}...`,
       });
+      await loadMintedSpores();
+      requestWalletRefresh();
 
       // Use in-memory bytes for instant preview — no chain re-query needed
       const avatarUrl = URL.createObjectURL(
@@ -334,6 +337,7 @@ export function useSpore() {
         message: `Image deleted: ${sporeId.slice(0, 10)}...`,
       });
       await loadMintedSpores();
+      requestWalletRefresh();
     } catch (err) {
       console.error(err);
       setStatus({
