@@ -5,14 +5,24 @@ import { usePathname } from "next/navigation";
 import { Wallet, LogOut } from "lucide-react";
 import { motion } from "framer-motion";
 import { useWallet } from "@/hooks/use-wallet";
-
-const navLinks = [
-  { label: "Mint", href: "/" },
-  { label: "Gallery", href: "/gallery" },
-];
+import {
+  useUsernameContext,
+  useProfileContext,
+} from "@/context/app-provider";
 
 export function TopNav() {
   const pathname = usePathname();
+  const { username } = useUsernameContext();
+  const { profile } = useProfileContext();
+  const onboardingComplete = Boolean(username && profile);
+  const needsOnboarding = !username || !profile;
+
+  const navLinks = [
+    { label: "My Page", href: "/me" },
+    ...(needsOnboarding ? [{ label: "Onboard", href: "/onboard" }] : []),
+    ...(onboardingComplete ? [{ label: "Mint", href: "/mint" }] : []),
+  ];
+
   const {
     isConnected,
     connect,
