@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useSigner, ccc } from "@ckb-ccc/connector-react";
+import { useQuery } from "@tanstack/react-query";
 import { requestWalletRefresh } from "@/lib/wallet-refresh";
 
 export type MintedSpore = {
@@ -59,16 +60,115 @@ function deserializeSporeID(rawBytes: Uint8Array): {
 export function useSpore() {
   const signer = useSigner();
   const [isMinting, setIsMinting] = useState(false);
-  const [isLoadingSpores, setIsLoadingSpores] = useState(false);
   const [status, setStatus] = useState<{
     type: "idle" | "error" | "success";
     message: string;
   }>({ type: "idle", message: "" });
   const [mintedImageUrl, setMintedImageUrl] = useState<string | null>(null);
-  const [mintedSpores, setMintedSpores] = useState<MintedSpore[]>([]);
   const [deletingSporeId, setDeletingSporeId] = useState<string | null>(null);
   const mintedImageUrlRef = useRef<string | null>(null);
   const mintedSporesRef = useRef<MintedSpore[]>([]);
+
+  const sporesQuery = useQuery({
+    queryKey: ["mintedSpores", signer ? "connected" : "disconnected"],
+    enabled: Boolean(signer),
+    queryFn: async (): Promise<MintedSpore[]> => {
+      if (!signer) return [];
+      const loaded: MintedSpore[] = [];
+      for await (const found of ccc.spore.findSporesBySigner({
+        signer,
+        order: "desc",
+        limit: 12,
+      })) {
+        const storedContentType =
+          found.sporeData.contentType || "application/octet-stream";
+        const sporeId =
+          found.spore.cellOutput.type?.args ?? crypto.randomUUID();
+
+        const ckbCapacity = (
+          Number(BigInt(String(found.spore.cellOutput.capacity))) / 100_000_000
+        ).toFixed(2);
+
+        if (storedContentType === "application/spore-id") {
+          try {
+            const rawBytes = Uint8Array.from(
+              ccc.bytesFrom(found.sporeData.content),
+            );
+            const { name, role, bio, imageMimeType, imageBytes } =
+              deserializeSporeID(rawBytes);
+            const imageUrl = URL.createObjectURL(
+              new Blob([imageBytes], { type: imageMimeType }),
+            );
+            loaded.push({
+              id: sporeId,
+              imageUrl,
+              contentType: imageMimeType,
+              sizeBytes: imageBytes.byteLength,
+              ckbCapacity,
+              name,
+              role,
+              bio,
+            });
+          } catch {
+            continue;
+          }
+        } else if (storedContentType === "application/json") {
+          try {
+            const bytes = Uint8Array.from(
+              ccc.bytesFrom(found.sporeData.content),
+            );
+            const parsed = JSON.parse(new TextDecoder().decode(bytes)) as {
+              name?: string;
+              role?: string;
+              bio?: string;
+              imageMimeType?: string;
+              imageData?: string;
+            };
+            if (!parsed.imageData || !parsed.imageMimeType) continue;
+            const binary = atob(parsed.imageData);
+            const imgBytes = new Uint8Array(new ArrayBuffer(binary.length));
+            for (let i = 0; i < binary.length; i++) {
+              imgBytes[i] = binary.charCodeAt(i);
+            }
+            const imageUrl = URL.createObjectURL(
+              new Blob([imgBytes], { type: parsed.imageMimeType }),
+            );
+            loaded.push({
+              id: sporeId,
+              imageUrl,
+              contentType: parsed.imageMimeType,
+              sizeBytes: imgBytes.byteLength,
+              ckbCapacity,
+              name: parsed.name ?? "",
+              role: parsed.role ?? "",
+              bio: parsed.bio ?? "",
+            });
+          } catch {
+            continue;
+          }
+        } else if (storedContentType.startsWith("image/")) {
+          const bytes = Uint8Array.from(ccc.bytesFrom(found.sporeData.content));
+          const imageUrl = URL.createObjectURL(
+            new Blob([bytes], { type: storedContentType }),
+          );
+          loaded.push({
+            id: sporeId,
+            imageUrl,
+            contentType: storedContentType,
+            sizeBytes: bytes.byteLength,
+            ckbCapacity,
+            name: "",
+            role: storedContentType.replace("image/", "").toUpperCase(),
+            bio: "",
+          });
+        }
+      }
+      return loaded;
+    },
+  });
+
+  const mintedSpores = sporesQuery.data ?? [];
+  const isLoadingSpores = sporesQuery.isLoading || sporesQuery.isFetching;
 
   const mintSpore = async (
     file: File,
@@ -151,122 +251,12 @@ export function useSpore() {
     }
   };
 
-  const clearSpores = () => {
-    setMintedSpores((prev) => {
-      prev.forEach((item) => URL.revokeObjectURL(item.imageUrl));
-      return [];
-    });
-  };
-
-  const loadMintedSpores = async (limit = 12) => {
-    if (!signer) {
-      clearSpores();
-      return;
-    }
-
-    setIsLoadingSpores(true);
+  const loadMintedSpores = async () => {
     try {
-      const loaded: MintedSpore[] = [];
-      for await (const found of ccc.spore.findSporesBySigner({
-        signer,
-        order: "desc",
-        limit,
-      })) {
-        const storedContentType =
-          found.sporeData.contentType || "application/octet-stream";
-        const sporeId =
-          found.spore.cellOutput.type?.args ?? crypto.randomUUID();
-
-        const ckbCapacity = (
-          Number(BigInt(String(found.spore.cellOutput.capacity))) / 100_000_000
-        ).toFixed(2);
-
-        if (storedContentType === "application/spore-id") {
-          try {
-            const rawBytes = Uint8Array.from(
-              ccc.bytesFrom(found.sporeData.content),
-            );
-            const { name, role, bio, imageMimeType, imageBytes } =
-              deserializeSporeID(rawBytes);
-            const imageUrl = URL.createObjectURL(
-              new Blob([imageBytes], { type: imageMimeType }),
-            );
-            loaded.push({
-              id: sporeId,
-              imageUrl,
-              contentType: imageMimeType,
-              sizeBytes: imageBytes.byteLength,
-              ckbCapacity,
-              name,
-              role,
-              bio,
-            });
-          } catch {
-            continue;
-          }
-        } else if (storedContentType === "application/json") {
-          // Legacy JSON+base64 spore
-          try {
-            const bytes = Uint8Array.from(
-              ccc.bytesFrom(found.sporeData.content),
-            );
-            const parsed = JSON.parse(new TextDecoder().decode(bytes)) as {
-              name?: string;
-              role?: string;
-              bio?: string;
-              imageMimeType?: string;
-              imageData?: string;
-            };
-            if (!parsed.imageData || !parsed.imageMimeType) continue;
-            const binary = atob(parsed.imageData);
-            const imgBytes = new Uint8Array(new ArrayBuffer(binary.length));
-            for (let i = 0; i < binary.length; i++) {
-              imgBytes[i] = binary.charCodeAt(i);
-            }
-            const imageUrl = URL.createObjectURL(
-              new Blob([imgBytes], { type: parsed.imageMimeType }),
-            );
-            loaded.push({
-              id: sporeId,
-              imageUrl,
-              contentType: parsed.imageMimeType,
-              sizeBytes: imgBytes.byteLength,
-              ckbCapacity,
-              name: parsed.name ?? "",
-              role: parsed.role ?? "",
-              bio: parsed.bio ?? "",
-            });
-          } catch {
-            continue;
-          }
-        } else if (storedContentType.startsWith("image/")) {
-          // Legacy image-only spore
-          const bytes = Uint8Array.from(ccc.bytesFrom(found.sporeData.content));
-          const imageUrl = URL.createObjectURL(
-            new Blob([bytes], { type: storedContentType }),
-          );
-          loaded.push({
-            id: sporeId,
-            imageUrl,
-            contentType: storedContentType,
-            sizeBytes: bytes.byteLength,
-            ckbCapacity,
-            name: "",
-            role: storedContentType.replace("image/", "").toUpperCase(),
-            bio: "",
-          });
-        }
-      }
-
-      setMintedSpores((prev) => {
-        prev.forEach((item) => URL.revokeObjectURL(item.imageUrl));
-        return loaded;
-      });
+      await sporesQuery.refetch();
     } catch (error) {
       console.error("Failed to load minted spores:", error);
       setStatus({ type: "error", message: "Failed to load minted spores." });
-    } finally {
-      setIsLoadingSpores(false);
     }
   };
 
@@ -275,12 +265,11 @@ export function useSpore() {
   }, [mintedImageUrl]);
 
   useEffect(() => {
-    mintedSporesRef.current = mintedSpores;
-  }, [mintedSpores]);
-
-  useEffect(() => {
     if (!signer) {
-      clearSpores();
+      mintedSporesRef.current.forEach((item) =>
+        URL.revokeObjectURL(item.imageUrl),
+      );
+      mintedSporesRef.current = [];
       if (mintedImageUrlRef.current) {
         URL.revokeObjectURL(mintedImageUrlRef.current);
       }
@@ -288,9 +277,13 @@ export function useSpore() {
       setStatus({ type: "idle", message: "" });
       return;
     }
-
-    void loadMintedSpores();
   }, [signer]);
+
+  useEffect(() => {
+    const prev = mintedSporesRef.current;
+    prev.forEach((item) => URL.revokeObjectURL(item.imageUrl));
+    mintedSporesRef.current = mintedSpores;
+  }, [mintedSpores]);
 
   useEffect(() => {
     return () => {

@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback } from "react";
 import { useSigner } from "@ckb-ccc/connector-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   checkUsernameAvailability,
   claimUsername,
@@ -13,60 +14,52 @@ import { requestWalletRefresh } from "@/lib/wallet-refresh";
 
 export function useUsername() {
   const signer = useSigner();
-  const [username, setUsername] = useState<Username | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isClaiming, setIsClaiming] = useState(false);
+  const queryClient = useQueryClient();
+  const queryKey = ["usernameByOwner", signer ? "connected" : "disconnected"];
 
-  const refresh = useCallback(async () => {
-    if (!signer) {
-      setUsername(null);
-      return;
-    }
-    setIsLoading(true);
-    try {
-      const next = await getUsernameByOwner(signer);
-      setUsername(next);
-    } catch (error) {
-      console.error("Failed to load username:", error);
-      setUsername(null);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [signer]);
+  const query = useQuery({
+    queryKey,
+    enabled: Boolean(signer),
+    queryFn: async (): Promise<Username | null> => {
+      if (!signer) return null;
+      return getUsernameByOwner(signer);
+    },
+  });
 
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
-
-  const claim = useCallback(
-    async (raw: string): Promise<Username> => {
+  const claimMutation = useMutation({
+    mutationFn: async (raw: string): Promise<Username> => {
       if (!signer) {
         throw new Error("Connect your wallet to claim a username.");
       }
-      setIsClaiming(true);
-      try {
-        const next = await claimUsername(signer, raw);
-        setUsername(next);
-        requestWalletRefresh();
-        return next;
-      } finally {
-        setIsClaiming(false);
-      }
+      return claimUsername(signer, raw);
     },
-    [signer],
+    onSuccess: (next) => {
+      queryClient.setQueryData(queryKey, next);
+      requestWalletRefresh();
+    },
+  });
+
+  const releaseMutation = useMutation({
+    mutationFn: async (): Promise<void> => {
+      if (!signer) return;
+      await releaseUsername(signer);
+    },
+    onSuccess: () => {
+      queryClient.setQueryData(queryKey, null);
+      requestWalletRefresh();
+    },
+  });
+
+  const claim = useCallback(
+    async (raw: string): Promise<Username> => {
+      return claimMutation.mutateAsync(raw);
+    },
+    [claimMutation],
   );
 
   const release = useCallback(async () => {
-    if (!signer) return;
-    setIsClaiming(true);
-    try {
-      await releaseUsername(signer);
-      setUsername(null);
-      requestWalletRefresh();
-    } finally {
-      setIsClaiming(false);
-    }
-  }, [signer]);
+    await releaseMutation.mutateAsync();
+  }, [releaseMutation]);
 
   const checkAvailability = useCallback(
     async (raw: string): Promise<UsernameAvailability> => {
@@ -76,10 +69,10 @@ export function useUsername() {
   );
 
   return {
-    username,
-    isLoading,
-    isClaiming,
-    refresh,
+    username: query.data ?? null,
+    isLoading: query.isLoading || query.isFetching,
+    isClaiming: claimMutation.isPending || releaseMutation.isPending,
+    refresh: query.refetch,
     claim,
     release,
     checkAvailability,

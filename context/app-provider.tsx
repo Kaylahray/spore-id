@@ -1,12 +1,14 @@
 "use client";
 
 import { Provider } from "@ckb-ccc/connector-react";
-import { createContext, useContext, useMemo } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { createContext, useContext, useMemo, useState } from "react";
 import { Toaster } from "sonner";
 import { useSpore } from "@/hooks/use-spore";
 import { useUsername } from "@/hooks/use-username";
 import { useProfile } from "@/hooks/use-profile";
 import { getClient } from "@/lib/registry/client";
+import { WalletProvider } from "./wallet-provider";
 
 type SporeStore = ReturnType<typeof useSpore>;
 type UsernameStore = ReturnType<typeof useUsername>;
@@ -18,10 +20,15 @@ const ProfileContext = createContext<ProfileStore | null>(null);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const defaultClient = useMemo(() => getClient(), []);
+  const [queryClient] = useState(() => new QueryClient());
 
   return (
     <Provider defaultClient={defaultClient}>
-      <AppProviderContent>{children}</AppProviderContent>
+      <QueryClientProvider client={queryClient}>
+        <WalletProvider>
+          <AppProviderContent>{children}</AppProviderContent>
+        </WalletProvider>
+      </QueryClientProvider>
     </Provider>
   );
 }

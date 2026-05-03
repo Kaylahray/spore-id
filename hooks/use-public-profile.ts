@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useRef } from "react";
 import { ccc } from "@ckb-ccc/connector-react";
+import { useQuery } from "@tanstack/react-query";
 import { getProfileByUsername } from "@/lib/registry/profile";
 import { getUsernameByName } from "@/lib/registry/username";
 import { getClient } from "@/lib/registry/client";
@@ -9,54 +10,51 @@ import type { StoredProfile, Username } from "@/lib/registry/types";
 import type { MintedSpore } from "./use-spore";
 
 export function usePublicProfile(username: string | undefined) {
-  const [profile, setProfile] = useState<StoredProfile | null>(null);
-  const [usernameRecord, setUsernameRecord] = useState<Username | null>(null);
-  const [avatarSpore, setAvatarSpore] = useState<MintedSpore | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-
-  const refresh = useCallback(async () => {
-    if (!username) {
-      setProfile(null);
-      setUsernameRecord(null);
-      return;
-    }
-    setIsLoading(true);
-    try {
+  const prevAvatarUrlRef = useRef<string | null>(null);
+  const query = useQuery({
+    queryKey: ["publicProfile", username],
+    enabled: Boolean(username),
+    queryFn: async (): Promise<{
+      profile: StoredProfile | null;
+      usernameRecord: Username | null;
+      avatarSpore: MintedSpore | null;
+    }> => {
+      if (!username) {
+        return { profile: null, usernameRecord: null, avatarSpore: null };
+      }
       const [u, p] = await Promise.all([
         getUsernameByName(username),
         getProfileByUsername(username),
       ]);
-      setUsernameRecord(u);
-      setProfile(p);
-      if (p?.avatarSporeId) {
-        const avatar = await getSporeById(p.avatarSporeId);
-        setAvatarSpore(avatar);
-      } else {
-        setAvatarSpore(null);
-      }
-    } catch (error) {
-      console.error("Failed to load public profile:", error);
-      setUsernameRecord(null);
-      setProfile(null);
-      setAvatarSpore(null);
-    } finally {
-      setIsLoading(false);
+      const avatarSpore = p?.avatarSporeId
+        ? await getSporeById(p.avatarSporeId)
+        : null;
+      return { profile: p, usernameRecord: u, avatarSpore };
+    },
+  });
+
+  const avatarUrl = query.data?.avatarSpore?.imageUrl ?? null;
+  useEffect(() => {
+    const prev = prevAvatarUrlRef.current;
+    if (prev && prev !== avatarUrl) {
+      URL.revokeObjectURL(prev);
     }
-  }, [username]);
-
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
-
-  useEffect(() => {
+    prevAvatarUrlRef.current = avatarUrl;
     return () => {
-      if (avatarSpore?.imageUrl) {
-        URL.revokeObjectURL(avatarSpore.imageUrl);
+      if (prevAvatarUrlRef.current) {
+        URL.revokeObjectURL(prevAvatarUrlRef.current);
+        prevAvatarUrlRef.current = null;
       }
     };
-  }, [avatarSpore]);
+  }, [avatarUrl]);
 
-  return { profile, usernameRecord, avatarSpore, isLoading, refresh };
+  return {
+    profile: query.data?.profile ?? null,
+    usernameRecord: query.data?.usernameRecord ?? null,
+    avatarSpore: query.data?.avatarSpore ?? null,
+    isLoading: query.isLoading || query.isFetching,
+    refresh: query.refetch,
+  };
 }
 
 async function getSporeById(id: string): Promise<MintedSpore | null> {
