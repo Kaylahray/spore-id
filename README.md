@@ -30,6 +30,7 @@ writes by asking your wallet (JoyID, MetaMask, OKX, …) to sign transactions.
 - [Configuration requirement](#configuration-requirement)
 - [Known limits](#known-limits-and-roadmap)
 
+
 ---
 
 ## What lives where
@@ -275,8 +276,8 @@ The bytecode-cell tx hashes from `.env.local`:
 
 | Script | Tx URL |
 |---|---|
-| Username bytecode | https://testnet.explorer.nervos.org/transaction/0x9c0eabe769dfee0bbe5ab1a64add968adc9ee9c030472a7fc858ad55edee352e |
-| Profile bytecode | https://testnet.explorer.nervos.org/transaction/0x7f02c225b40cde6a2b005627fddd4529c3296e5b8a9d87d2a09b26810db443cd |
+| Username bytecode | https://testnet.explorer.nervos.org/transaction/0x873cc11a24dff79b88dc38e3e6910acff6ec749c3ccfbd8b04e9c5814ab67756 |
+| Profile bytecode | https://testnet.explorer.nervos.org/transaction/0xa1c95beaa1b8253071e822c5045cf3f60b3fa0b7465db6d973153d73c43e9faa |
 | ckb-js-vm | https://testnet.explorer.nervos.org/transaction/0x756fdaf0d1ba1d2e03dc13c71c967b24021bc054893a766ccee6879c468892d2 |
 
 Each one shows an output cell containing the binary code (look at the cell
@@ -527,13 +528,13 @@ for "what's actually deployed". It's a JSON file like:
 {
   "testnet": {
     "index.bc": {
-      "codeHash": "0x1de16f41...",
+      "codeHash": "0x1de16f41679b27664325993128e00f0b727390ff59bda5a7595080c5b650e09c",
       "hashType": "type",
       "cellDeps": [
         {
           "cellDep": {
             "outPoint": {
-              "txHash": "0x9c0eabe7...",
+              "txHash": "0x873cc11a24dff79b88dc38e3e6910acff6ec749c3ccfbd8b04e9c5814ab67756",
               "index": 0
             },
             "depType": "code"
@@ -544,6 +545,8 @@ for "what's actually deployed". It's a JSON file like:
   }
 }
 ```
+
+(This matches `username-registry-ts/deployment/scripts.json` after the latest testnet bytecode deploy; profile registry uses a separate JSON with different `codeHash` and bytecode `txHash`.)
 
 If you split repos, **commit `deployment/scripts.json` in each contract
 repo** so anyone (including future you) can wire up `.env.local` from a
