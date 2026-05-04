@@ -100,8 +100,8 @@ export const REGISTRY_FEE_RATE = BigInt(2000);
 export const USERNAME_RULES = {
   minLength: 3,
   maxLength: 32,
-  pattern: /^[a-zA-Z0-9_]+$/,
-  hint: "3–32 chars · letters, numbers, underscore",
+  pattern: /^[a-z0-9_]+$/,
+  hint: "3–32 chars · lowercase letters, numbers, underscore",
 } as const;
 
 export const PROFILE_RULES = {

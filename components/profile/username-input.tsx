@@ -84,7 +84,7 @@ export function UsernameInput({
           value={value}
           onChange={(e) => onChange(e.target.value.toLowerCase())}
           placeholder="alice_dev"
-          className="w-full bg-paper border-[3px] border-ink pl-10 pr-12 py-3 font-display text-lg uppercase focus:outline-none focus:bg-acid transition-colors tracking-wide"
+          className="w-full bg-paper border-[3px] border-ink pl-10 pr-12 py-3 font-display text-lg focus:outline-none focus:bg-acid transition-colors tracking-wide"
         />
         <span className="absolute right-3 top-1/2 -translate-y-1/2">
           <StatusIcon status={status} />

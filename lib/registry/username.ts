@@ -145,7 +145,9 @@ export async function claimUsername(
 ): Promise<Username> {
   const username = normalizeUsername(rawUsername);
   if (!isValidUsername(username)) {
-    throw new Error("Username must be 3–32 chars, letters/numbers/underscore.");
+    throw new Error(
+      "Username must be 3–32 chars, lowercase letters/numbers/underscore.",
+    );
   }
 
   const ownerLock = await getOwnerLock(signer);

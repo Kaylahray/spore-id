@@ -63,14 +63,14 @@ export function OnboardingWizard() {
   };
 
   const advanceFromUsername = async () => {
-    if (username && username.username === pendingUsername.trim().toLowerCase()) {
+    if (username && username.username === pendingUsername.trim()) {
       setStep("profile");
       return;
     }
     try {
       await claim(pendingUsername);
       toast.success("Username claimed", {
-        description: `@${pendingUsername.toLowerCase()} is yours.`,
+        description: `@${pendingUsername.trim()} is yours.`,
       });
       setStep("profile");
     } catch (err) {
@@ -81,7 +81,7 @@ export function OnboardingWizard() {
   };
 
   const finishProfile = async (data: Profile) => {
-    const handle = username?.username ?? pendingUsername.toLowerCase();
+    const handle = username?.username ?? pendingUsername.trim();
     try {
       if (profile) {
         await save(data, handle);
